@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./workspace/skills/collect-arxiv" },
+    { "path": "./workspace/skills/collect-github" },
+    { "path": "./workspace/skills/collect-rss" },
+    { "path": "./workspace/skills/collect-hn" },
+    { "path": "./workspace/skills/collect-reddit" },
+    { "path": "./workspace/skills/enrich-fetch" },
+    { "path": "./workspace/skills/score-relevance" },
+    { "path": "./workspace/skills/summarize-tldr" },
+    { "path": "./workspace/skills/search-corpus" },
+    { "path": "./workspace/skills/post-telegram" },
+    { "path": "./workspace/skills/health-check" }
+  ]
+}

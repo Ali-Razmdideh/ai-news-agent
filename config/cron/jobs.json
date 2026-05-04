@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "ai-news-collect",
+      "schedule": {
+        "tz": "Asia/Tehran",
+        "kind": "cron",
+        "expr": "*/30 * * * *"
+      },
+      "style": "isolated",
+      "agentId": "news-pipeline",
+      "prompt": "Run checklist `publish-digest`. Call all collect-* skills in parallel. For each new item call score-relevance. Drop items < 6. For survivors call enrich-fetch (if body missing) then summarize-tldr. Skills pick their own LLM tier (low/mid/high); the actual model resolves from LLM_PROVIDER + MODEL_LOW/MID/HIGH env. Then post-telegram for each. Respect MAX_POSTS_PER_HOUR. Return one-line stats.",
+      "enabled": true,
+      "state": {}
+    },
+    {
+      "id": "ai-news-digest",
+      "schedule": {
+        "tz": "Asia/Tehran",
+        "kind": "cron",
+        "expr": "0 8 * * *"
+      },
+      "style": "isolated",
+      "agentId": "news-pipeline",
+      "prompt": "Build the daily digest: top 10 items by score from the last 24h. Use post-telegram with kind=digest.",
+      "enabled": true,
+      "state": {}
+    },
+    {
+      "id": "ai-news-rising",
+      "schedule": {
+        "tz": "Asia/Tehran",
+        "kind": "cron",
+        "expr": "0 10 * * 6"
+      },
+      "style": "isolated",
+      "agentId": "news-pipeline",
+      "prompt": "Compute rising topics/authors/repos week-over-week and post a `Rising` digest to the channel.",
+      "enabled": true,
+      "state": {}
+    },
+    {
+      "id": "rotate-credentials-reminder",
+      "schedule": {
+        "tz": "Asia/Tehran",
+        "kind": "cron",
+        "expr": "0 9 * * 1"
+      },
+      "style": "isolated",
+      "agentId": "news-pipeline",
+      "prompt": "Run checklist `rotate-credentials`.",
+      "enabled": true,
+      "state": {}
+    }
+  ]
+}

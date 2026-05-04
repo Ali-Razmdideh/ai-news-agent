@@ -1,0 +1,77 @@
+{
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "${TELEGRAM_BOT_TOKEN}",
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "${ADMIN_TG_USER_ID}"
+      ],
+      "groupPolicy": "disabled"
+    }
+  },
+  "skills": {
+    "load": {
+      "extraDirs": [
+        "/app/workspace/skills"
+      ],
+      "watch": false
+    }
+  },
+  "agents": {
+    "list": [
+      {
+        "id": "news-pipeline",
+        "workspace": "/app/workspace",
+        "skills": [
+          "collect-arxiv",
+          "collect-github",
+          "collect-rss",
+          "collect-hn",
+          "collect-reddit",
+          "enrich-fetch",
+          "score-relevance",
+          "summarize-tldr",
+          "post-telegram"
+        ]
+      },
+      {
+        "id": "qa",
+        "workspace": "/app/workspace",
+        "skills": [
+          "search-corpus",
+          "post-telegram"
+        ]
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "type": "route",
+      "agentId": "qa",
+      "match": {
+        "channel": "telegram",
+        "peer": {
+          "kind": "direct",
+          "id": "${ADMIN_TG_USER_ID}"
+        }
+      }
+    },
+    {
+      "type": "route",
+      "agentId": "news-pipeline",
+      "match": {
+        "channel": "telegram"
+      }
+    }
+  ],
+  "gateway": {
+    "auth": {
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    }
+  },
+  "meta": {
+    "lastTouchedVersion": "2026.5.3-1",
+    "lastTouchedAt": "2026-05-04T11:29:11.160Z"
+  }
+}

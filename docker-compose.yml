@@ -1,0 +1,52 @@
+services:
+  ai-news:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+    image: ai-news:latest
+    container_name: ai-news
+    restart: unless-stopped
+    # read_only & cap_drop temporarily relaxed; re-enable after first successful boot.
+    security_opt:
+      - "no-new-privileges:true"
+    volumes:
+      - ainews-data:/data
+      - ainews-state:/home/app/.openclaw
+      - ./config:/app/config
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MODEL_LOW: ${MODEL_LOW:-}
+      MODEL_MID: ${MODEL_MID:-}
+      MODEL_HIGH: ${MODEL_HIGH:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
+      TELEGRAM_DISCUSSION_GROUP_ID: ${TELEGRAM_DISCUSSION_GROUP_ID:-}
+      ADMIN_TG_USER_ID: ${ADMIN_TG_USER_ID:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+      AI_NEWS_DB: /data/news.db
+      DAILY_TOKEN_BUDGET: ${DAILY_TOKEN_BUDGET:-2000000}
+      MAX_POSTS_PER_HOUR: ${MAX_POSTS_PER_HOUR:-8}
+      QA_PER_USER_PER_HOUR: ${QA_PER_USER_PER_HOUR:-10}
+      TIMEZONE: ${TIMEZONE:-Asia/Tehran}
+      DRY_RUN: ${DRY_RUN:-1}
+      LOG_LEVEL: info
+      # Container reaches host proxy via host.docker.internal.
+      HTTP_PROXY: ${CONTAINER_HTTP_PROXY:-http://host.docker.internal:11180}
+      HTTPS_PROXY: ${CONTAINER_HTTPS_PROXY:-http://host.docker.internal:11180}
+      NO_PROXY: localhost,127.0.0.1,::1,host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [default]
+
+volumes:
+  ainews-data:
+  ainews-state:
+
+networks:
+  default:
+    driver: bridge

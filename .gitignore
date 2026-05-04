@@ -1,0 +1,17 @@
+node_modules
+dist
+*.tsbuildinfo
+.env
+.env.local
+.npmrc
+data/*.db
+data/*.db-shm
+data/*.db-wal
+backups/
+.DS_Store
+.vitest-cache
+.eslintcache
+*.bak
+*.bak.*
+*.last-good
+config/cron/jobs-state.json
