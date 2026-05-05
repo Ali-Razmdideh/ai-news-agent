@@ -6,10 +6,10 @@ disable-model-invocation: true
 metadata:
   openclaw:
     requires:
-      bins: ["node"]
+      bins: ["python3"]
       env: ["AI_NEWS_DB"]
       os: ["linux", "darwin"]
 ---
 
-Run `node {baseDir}/run.js`. Stdout JSON: `{collected, new}`.
+Run `python3 {baseDir}/run.py`. Stdout JSON: `{collected, new}`.
 Pure script — no LLM, no Telegram. Only writes to DB.

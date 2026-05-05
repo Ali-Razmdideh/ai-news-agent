@@ -6,9 +6,9 @@ disable-model-invocation: true
 metadata:
   openclaw:
     requires:
-      bins: ["node"]
+      bins: ["python3"]
       env: ["AI_NEWS_DB", "GITHUB_TOKEN"]
       os: ["linux", "darwin"]
 ---
 
-Run `node {baseDir}/run.js`. Uses a read-only PAT (`public_repo` scope only). Output: `{collected, new}`.
+Run `python3 {baseDir}/run.py`. Uses a read-only PAT (`public_repo` scope only). Output: `{collected, new}`.

@@ -5,10 +5,10 @@ user-invocable: false
 metadata:
   openclaw:
     requires:
-      bins: ["node"]
+      bins: ["python3"]
       env: ["AI_NEWS_DB"]
       anyEnv: ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
       os: ["linux", "darwin"]
 ---
 
-Run `node {baseDir}/run.js --item-id <n>`. Persists to `summaries`.
+Run `python3 {baseDir}/run.py --item-id <n>`. Persists to `summaries`.

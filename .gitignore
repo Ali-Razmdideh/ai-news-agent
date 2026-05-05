@@ -15,3 +15,5 @@ backups/
 *.bak.*
 *.last-good
 config/cron/jobs-state.json
+__pycache__/
+*.pyc

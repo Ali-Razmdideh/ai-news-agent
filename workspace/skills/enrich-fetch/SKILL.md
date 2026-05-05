@@ -6,9 +6,9 @@ disable-model-invocation: true
 metadata:
   openclaw:
     requires:
-      bins: ["node"]
+      bins: ["python3"]
       env: ["AI_NEWS_DB"]
       os: ["linux", "darwin"]
 ---
 
-Run `node {baseDir}/run.js --item-id <n>`. Refuses any URL whose host is not on the allowlist or that resolves to a private IP.
+Run `python3 {baseDir}/run.py --item-id <n>`. Refuses any URL whose host is not on the allowlist or that resolves to a private IP.

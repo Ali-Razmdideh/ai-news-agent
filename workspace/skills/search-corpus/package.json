@@ -1,9 +1,0 @@
-{
-  "name": "@ai-news/skill-search-corpus",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "./dist/run.js",
-  "scripts": { "build": "tsc -b" },
-  "dependencies": { "@ai-news/core": "workspace:*" }
-}

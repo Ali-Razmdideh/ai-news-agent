@@ -5,9 +5,9 @@ user-invocable: false
 metadata:
   openclaw:
     requires:
-      bins: ["node"]
+      bins: ["python3"]
       env: ["AI_NEWS_DB"]
       os: ["linux", "darwin"]
 ---
 
-Run `node {baseDir}/run.js --q "<question>" [--parent-item-id <n>] [--k 8]`. Returns `{matches: [{item_id, url, title, score, snippet}]}`.
+Run `python3 {baseDir}/run.py --q "<question>" [--parent-item-id <n>] [--k 8]`. Returns `{matches: [{item_id, url, title, score, snippet}]}`.

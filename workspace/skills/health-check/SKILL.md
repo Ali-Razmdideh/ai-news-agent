@@ -6,12 +6,12 @@ disable-model-invocation: true
 metadata:
   openclaw:
     requires:
-      bins: ["node"]
+      bins: ["python3"]
       env: ["AI_NEWS_DB", "TELEGRAM_BOT_TOKEN", "ADMIN_TG_USER_ID"]
       os: ["linux", "darwin"]
 ---
 
-Run `node {baseDir}/run.js`. Output is JSON `{ok, checks: {...}, errors: []}`.
+Run `python3 {baseDir}/run.py`. Output is JSON `{ok, checks: {...}, errors: []}`.
 
 Hard rules:
 - Never reads/loads `MEMORY.md` or `USER.md` (callable from any session).
