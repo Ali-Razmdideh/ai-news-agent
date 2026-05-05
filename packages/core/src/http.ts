@@ -112,11 +112,17 @@ function isPrivateV6(ip: string): boolean {
   return false;
 }
 
+const DEFAULT_ALLOW_LC: ReadonlyArray<string> = DEFAULT_ALLOW_HOSTS.map((s) => s.toLowerCase());
+
 function hostAllowed(host: string, extra: ReadonlyArray<string>): boolean {
   const h = host.toLowerCase();
-  const all = [...DEFAULT_ALLOW_HOSTS, ...extra].map((s) => s.toLowerCase());
-  return all.some((a) => h === a || h.endsWith(`.${a}`));
+  const matches = (a: string): boolean => h === a || h.endsWith(`.${a}`);
+  if (DEFAULT_ALLOW_LC.some(matches)) return true;
+  for (const e of extra) if (matches(e.toLowerCase())) return true;
+  return false;
 }
+
+const MAX_REDIRECTS = 3;
 
 export class SsrfError extends Error {
   constructor(message: string) {
@@ -183,7 +189,8 @@ function redactProxy(url: string): string {
 
 const sharedAgent = buildDispatcher();
 
-export async function safeFetch(url: string, opts: SafeFetchOptions = {}): Promise<Response> {
+export async function safeFetch(url: string, opts: SafeFetchOptions = {}, depth = 0): Promise<Response> {
+  if (depth > MAX_REDIRECTS) throw new SsrfError(`too_many_redirects:${depth}`);
   const u = new URL(url);
   if (u.protocol !== "https:" && u.protocol !== "http:") {
     throw new SsrfError(`refused_protocol:${u.protocol}`);
@@ -225,8 +232,8 @@ export async function safeFetch(url: string, opts: SafeFetchOptions = {}): Promi
       const loc = res.headers.get("location");
       if (!loc) return res as unknown as Response;
       const nextUrl = new URL(loc, u);
-      log.debug({ from: url, to: nextUrl.toString() }, "redirect");
-      return safeFetch(nextUrl.toString(), { ...opts, timeoutMs: opts.timeoutMs ?? 15_000 });
+      log.debug({ from: url, to: nextUrl.toString(), depth }, "redirect");
+      return safeFetch(nextUrl.toString(), { ...opts, timeoutMs: opts.timeoutMs ?? 15_000 }, depth + 1);
     }
     return res as unknown as Response;
   } finally {

@@ -1,9 +1,4 @@
-import { openDb, safeFetchText, log } from "@ai-news/core";
-
-function arg(name: string): string | undefined {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-}
+import { openDb, safeFetchText, runSkill, cliArg } from "@ai-news/core";
 
 function htmlToText(html: string): string {
   return html
@@ -20,8 +15,8 @@ function htmlToText(html: string): string {
     .slice(0, 16_000);
 }
 
-async function main(): Promise<void> {
-  const itemId = Number(arg("item-id"));
+runSkill("enrich-fetch", async () => {
+  const itemId = Number(cliArg("item-id"));
   if (!Number.isFinite(itemId)) throw new Error("missing --item-id");
   const db = openDb();
   const row = db.prepare("SELECT id, url, raw_body FROM items WHERE id = ?").get(itemId) as
@@ -29,17 +24,9 @@ async function main(): Promise<void> {
     | undefined;
   if (!row) throw new Error(`item_not_found:${itemId}`);
   if (row.raw_body && row.raw_body.length > 200) {
-    process.stdout.write(JSON.stringify({ id: itemId, fetched: false, reason: "already_has_body" }) + "\n");
-    return;
+    return { id: itemId, fetched: false, reason: "already_has_body" as const };
   }
-  const html = await safeFetchText(row.url, { timeoutMs: 15_000, maxBytes: 3 * 1024 * 1024 });
-  const text = htmlToText(html);
+  const text = htmlToText(await safeFetchText(row.url, { timeoutMs: 15_000, maxBytes: 3 * 1024 * 1024 }));
   db.prepare("UPDATE items SET raw_body = ? WHERE id = ?").run(text, itemId);
-  log.info({ id: itemId, bytes: text.length }, "enrich_fetch_done");
-  process.stdout.write(JSON.stringify({ id: itemId, fetched: true, bytes: text.length }) + "\n");
-}
-
-main().catch((e) => {
-  log.error({ err: String(e) }, "enrich_fetch_failed");
-  process.exit(1);
+  return { id: itemId, fetched: true, bytes: text.length };
 });

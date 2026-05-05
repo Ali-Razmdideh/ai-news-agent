@@ -1,21 +1,24 @@
-import { openDb, embed, cosine, log } from "@ai-news/core";
-
-function arg(name: string): string | undefined {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 ? process.argv[i + 1] : undefined;
-}
+import { openDb, embed, cosine, log, runSkill, cliArg } from "@ai-news/core";
 
 type Match = { item_id: number; url: string; title: string; score: number; snippet: string };
 
-async function main(): Promise<void> {
-  const q = arg("q");
+function sanitizeFtsQuery(q: string): string {
+  return q
+    .replace(/["()*]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 2)
+    .slice(0, 8)
+    .join(" OR ");
+}
+
+runSkill("search-corpus", async () => {
+  const q = cliArg("q");
   if (!q) throw new Error("missing --q");
-  const k = Math.max(1, Math.min(20, Number(arg("k") ?? 8)));
-  const parent = arg("parent-item-id");
+  const k = Math.max(1, Math.min(20, Number(cliArg("k") ?? 8)));
+  const parent = cliArg("parent-item-id");
 
   const db = openDb();
 
-  // FTS5 candidate set
   const ftsRows = db
     .prepare(
       `SELECT it.id AS item_id, it.url, it.title, sm.tldr
@@ -26,7 +29,6 @@ async function main(): Promise<void> {
     )
     .all(sanitizeFtsQuery(q), k * 4) as Array<{ item_id: number; url: string; title: string; tldr: string | null }>;
 
-  // Recent embedded items (cap 500 — JS cosine is cheap at this size)
   const vecRows = db
     .prepare(
       `SELECT it.id AS item_id, it.url, it.title, sm.tldr, e.vec_json
@@ -60,7 +62,7 @@ async function main(): Promise<void> {
       const sim = cosine(qVec, JSON.parse(r.vec_json) as number[]);
       const cur = merged.get(r.item_id);
       if (cur) cur.score = Math.max(cur.score, sim);
-      else if (sim > 0.25)
+      else if (sim > 0.25) {
         merged.set(r.item_id, {
           item_id: r.item_id,
           url: r.url,
@@ -68,6 +70,7 @@ async function main(): Promise<void> {
           score: sim,
           snippet: (r.tldr ?? r.title).slice(0, 400),
         });
+      }
     }
   }
 
@@ -81,19 +84,5 @@ async function main(): Promise<void> {
     }
   }
 
-  process.stdout.write(JSON.stringify({ matches }) + "\n");
-}
-
-function sanitizeFtsQuery(q: string): string {
-  return q
-    .replace(/["()*]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 2)
-    .slice(0, 8)
-    .join(" OR ");
-}
-
-main().catch((e) => {
-  log.error({ err: String(e) }, "search_failed");
-  process.exit(1);
+  return { matches };
 });

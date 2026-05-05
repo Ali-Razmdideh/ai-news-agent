@@ -47,7 +47,7 @@ async function run(): Promise<void> {
     const dm = firstMatch(/dmPolicy\s*:\s*"([^"]+)"/, raw);
     const gp = firstMatch(/groupPolicy\s*:\s*"([^"]+)"/, raw);
     if (dm !== "allowlist") throw new Error(`dmPolicy=${dm}`);
-    if (gp !== "allowlist") throw new Error(`groupPolicy=${gp}`);
+    if (gp !== "allowlist" && gp !== "disabled") throw new Error(`groupPolicy=${gp}`);
     checks.push({ name: "allowlist_config", ok: true, detail: `dm=${dm} group=${gp}` });
   } catch (e) {
     checks.push({ name: "allowlist_config", ok: false, detail: String(e) });
