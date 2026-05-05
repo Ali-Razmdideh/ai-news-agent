@@ -48,6 +48,12 @@ runSkill("summarize-tldr", async () => {
   if (!row) throw new Error(`item_not_found:${itemId}`);
 
   const body = scrubForModel(row.raw_body ?? "").slice(0, 8000);
+  if (body.length < 100) {
+    // Refuse to summarize on a body too thin to ground a real TLDR. Without
+    // this guard the model produces "not stated" placeholder bullets that
+    // then ship to Telegram. Run enrich-fetch first.
+    throw new Error(`body_too_short:${body.length}`);
+  }
 
   let tier: Tier = row.code_heavy ? "high" : "low";
   let { text, model } = await summarize(tier, row.title, body);

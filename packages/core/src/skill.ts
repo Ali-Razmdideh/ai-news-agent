@@ -11,6 +11,19 @@ export function xmlMatch(block: string, re: RegExp): string {
 }
 
 /**
+ * Normalize a date-ish string (RFC822 from RSS, ISO from Atom, unix epoch
+ * in seconds, etc.) to ISO 8601. Returns `null` if unparseable so SQLite
+ * `ORDER BY published_at DESC` sorts chronologically.
+ */
+export function toIso(input: string | number | null | undefined): string | null {
+  if (input === null || input === undefined || input === "") return null;
+  const raw = typeof input === "number" ? input : String(input).trim();
+  const parsed = typeof raw === "number" ? new Date(raw) : new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
+
+/**
  * Extract the first balanced-looking `{...}` JSON object from a model's text
  * response and parse it. Throws if no object is found or parsing fails — the
  * thrown error message is intentionally short so it's safe to log.
@@ -51,7 +64,7 @@ export function insertItems(rows: ReadonlyArray<CollectedItem>): { collected: nu
         r.title,
         r.raw_body ?? null,
         r.authors ?? null,
-        r.published_at ?? null,
+        toIso(r.published_at ?? null),
       );
       if ((res.changes ?? 0) > 0) fresh++;
     }

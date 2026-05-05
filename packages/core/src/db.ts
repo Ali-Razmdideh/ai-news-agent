@@ -18,7 +18,9 @@ export function openDb(): DatabaseSync {
   return db;
 }
 
-const MIGRATIONS: Array<{ id: number; sql: string }> = [
+type Migration = { id: number; sql?: string; js?: (db: DatabaseSync) => void };
+
+const MIGRATIONS: Array<Migration> = [
   {
     id: 1,
     sql: `
@@ -127,6 +129,23 @@ const MIGRATIONS: Array<{ id: number; sql: string }> = [
     );
     `,
   },
+  {
+    id: 2,
+    js: (db) => {
+      // Normalize legacy published_at strings (RFC822 from RSS, etc.) to ISO
+      // 8601 so SQL ORDER BY published_at sorts chronologically.
+      const rows = db
+        .prepare("SELECT id, published_at FROM items WHERE published_at IS NOT NULL")
+        .all() as Array<{ id: number; published_at: string }>;
+      const upd = db.prepare("UPDATE items SET published_at = ? WHERE id = ?");
+      for (const r of rows) {
+        const d = new Date(r.published_at);
+        if (Number.isNaN(d.getTime())) continue;
+        const iso = d.toISOString();
+        if (iso !== r.published_at) upd.run(iso, r.id);
+      }
+    },
+  },
 ];
 
 function migrate(db: DatabaseSync): void {
@@ -145,7 +164,8 @@ function migrate(db: DatabaseSync): void {
     log.info({ id: m.id }, "applying_migration");
     runSql(db, "BEGIN");
     try {
-      runSql(db, m.sql);
+      if (m.sql) runSql(db, m.sql);
+      if (m.js) m.js(db);
       db.prepare("INSERT INTO _migrations (id) VALUES (?)").run(m.id);
       runSql(db, "COMMIT");
     } catch (e) {
