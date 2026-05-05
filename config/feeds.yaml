@@ -1,74 +1,77 @@
 # RSS feeds consumed by collect-rss.
 # Hosts must be on packages/core/http.ts allowlist (otherwise SSRF guard refuses).
+#
+# All sources commented out except TLDR-AI for the initial smoke run.
+# Re-enable as needed.
 
 # ── Frontier labs ────────────────────────────────────────────────────────────
-- name: anthropic-news
-  url: https://www.anthropic.com/news/rss.xml
-- name: openai-blog
-  url: https://openai.com/news/rss.xml
-- name: deepmind-blog
-  url: https://deepmind.google/blog/rss.xml
-- name: google-research
-  url: https://research.google/blog/rss/
-- name: meta-ai
-  url: https://ai.meta.com/blog/rss/
-- name: mistral-news
-  url: https://mistral.ai/news/feed.xml
-- name: cohere-blog
-  url: https://cohere.com/blog/rss.xml
+# - name: anthropic-news
+#   url: https://www.anthropic.com/news/rss.xml
+# - name: openai-blog
+#   url: https://openai.com/news/rss.xml
+# - name: deepmind-blog
+#   url: https://deepmind.google/blog/rss.xml
+# - name: google-research
+#   url: https://research.google/blog/rss/
+# - name: meta-ai
+#   url: https://ai.meta.com/blog/rss/
+# - name: mistral-news
+#   url: https://mistral.ai/news/feed.xml
+# - name: cohere-blog
+#   url: https://cohere.com/blog/rss.xml
 
 # ── Platforms / tooling ──────────────────────────────────────────────────────
-- name: huggingface-blog
-  url: https://huggingface.co/blog/feed.xml
-- name: nvidia-developer
-  url: https://developer.nvidia.com/blog/category/generative-ai/feed/
-- name: pytorch-blog
-  url: https://pytorch.org/feed.xml
-- name: pwc-papers
-  url: https://paperswithcode.com/latest
+# - name: huggingface-blog
+#   url: https://huggingface.co/blog/feed.xml
+# - name: nvidia-developer
+#   url: https://developer.nvidia.com/blog/category/generative-ai/feed/
+# - name: pytorch-blog
+#   url: https://pytorch.org/feed.xml
+# - name: pwc-papers
+#   url: https://paperswithcode.com/latest
 
 # ── Academic / lab blogs ─────────────────────────────────────────────────────
-- name: bair-berkeley
-  url: https://bair.berkeley.edu/blog/feed.xml
-- name: stanford-hai
-  url: https://hai.stanford.edu/news/rss.xml
-- name: mit-news-ai
-  url: https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml
+# - name: bair-berkeley
+#   url: https://bair.berkeley.edu/blog/feed.xml
+# - name: stanford-hai
+#   url: https://hai.stanford.edu/news/rss.xml
+# - name: mit-news-ai
+#   url: https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml
 
 # ── High-signal individuals (user-requested + curated) ───────────────────────
-- name: simon-willison
-  url: https://simonwillison.net/atom/everything/
-- name: lilian-weng
-  url: https://lilianweng.github.io/index.xml
-- name: andrej-karpathy
-  url: https://karpathy.github.io/feed.xml
-- name: andrej-karpathy-bear
-  url: https://karpathy.bearblog.dev/feed/?type=rss
-- name: sebastian-raschka
-  url: https://magazine.sebastianraschka.com/feed
-- name: nathan-lambert-interconnects
-  url: https://www.interconnects.ai/feed
-- name: ethan-mollick
-  url: https://www.oneusefulthing.org/feed
-- name: jack-clark-import-ai
-  url: https://importai.substack.com/feed
-- name: ai-snake-oil
-  url: https://www.aisnakeoil.com/feed
-- name: chip-huyen
-  url: https://huyenchip.com/feed.xml
-- name: eugene-yan
-  url: https://eugeneyan.com/rss/
-- name: vicki-boykis
-  url: https://vickiboykis.com/feed/
+# - name: simon-willison
+#   url: https://simonwillison.net/atom/everything/
+# - name: lilian-weng
+#   url: https://lilianweng.github.io/index.xml
+# - name: andrej-karpathy
+#   url: https://karpathy.github.io/feed.xml
+# - name: andrej-karpathy-bear
+#   url: https://karpathy.bearblog.dev/feed/?type=rss
+# - name: sebastian-raschka
+#   url: https://magazine.sebastianraschka.com/feed
+# - name: nathan-lambert-interconnects
+#   url: https://www.interconnects.ai/feed
+# - name: ethan-mollick
+#   url: https://www.oneusefulthing.org/feed
+# - name: jack-clark-import-ai
+#   url: https://importai.substack.com/feed
+# - name: ai-snake-oil
+#   url: https://www.aisnakeoil.com/feed
+# - name: chip-huyen
+#   url: https://huyenchip.com/feed.xml
+# - name: eugene-yan
+#   url: https://eugeneyan.com/rss/
+# - name: vicki-boykis
+#   url: https://vickiboykis.com/feed/
 
 # ── Newsletters / aggregators ────────────────────────────────────────────────
-- name: latent-space
-  url: https://www.latent.space/feed
-- name: the-gradient
-  url: https://thegradient.pub/rss/
+# - name: latent-space
+#   url: https://www.latent.space/feed
+# - name: the-gradient
+#   url: https://thegradient.pub/rss/
 - name: tldr-ai
   url: https://tldr.tech/api/rss/ai
 
 # ── Industry analysis ────────────────────────────────────────────────────────
-- name: stratechery-passport-ai   # may 401 without subscription; collector ignores errors
-  url: https://stratechery.com/category/articles/feed/
+# - name: stratechery-passport-ai   # may 401 without subscription; collector ignores errors
+#   url: https://stratechery.com/category/articles/feed/

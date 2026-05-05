@@ -1,7 +1,31 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { fetch as undiciFetch, ProxyAgent, type Dispatcher } from "undici";
 import { loadEnv } from "./env.js";
 import { recordUsage, isOverBudget } from "./budget.js";
+
+// Provider SDKs don't reliably honor `setGlobalDispatcher`, so build a
+// dedicated proxy-aware fetch and inject it into each client.
+let proxyDispatcher: Dispatcher | undefined;
+function getProxyDispatcher(): Dispatcher | undefined {
+  if (proxyDispatcher !== undefined) return proxyDispatcher;
+  const proxy =
+    process.env["HTTPS_PROXY"] ||
+    process.env["https_proxy"] ||
+    process.env["HTTP_PROXY"] ||
+    process.env["http_proxy"];
+  proxyDispatcher = proxy ? new ProxyAgent({ uri: proxy }) : undefined;
+  return proxyDispatcher;
+}
+
+const sdkFetch: typeof fetch = (async (input: unknown, init?: unknown) => {
+  const dispatcher = getProxyDispatcher();
+  const opts = dispatcher ? { ...(init as object), dispatcher } : (init as object | undefined);
+  return undiciFetch(
+    input as Parameters<typeof undiciFetch>[0],
+    opts as Parameters<typeof undiciFetch>[1],
+  ) as unknown as Response;
+}) as typeof fetch;
 
 /**
  * Provider-neutral tier names. The actual model used per tier is configurable
@@ -38,12 +62,16 @@ let anthropicClient: Anthropic | undefined;
 let openaiClient: OpenAI | undefined;
 
 function getAnthropic(): Anthropic {
-  if (!anthropicClient) anthropicClient = new Anthropic({ apiKey: loadEnv().ANTHROPIC_API_KEY });
+  if (!anthropicClient) {
+    anthropicClient = new Anthropic({ apiKey: loadEnv().ANTHROPIC_API_KEY, fetch: sdkFetch });
+  }
   return anthropicClient;
 }
 
 function getOpenAI(): OpenAI {
-  if (!openaiClient) openaiClient = new OpenAI({ apiKey: loadEnv().OPENAI_API_KEY });
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: loadEnv().OPENAI_API_KEY, fetch: sdkFetch });
+  }
   return openaiClient;
 }
 
@@ -96,13 +124,15 @@ export async function complete(args: CompleteArgs): Promise<CompleteResult> {
     return { text, tokensIn, tokensOut, model, provider };
   }
 
-  // OpenAI (Responses API). gpt-5* models use `max_output_tokens`.
+  // OpenAI Responses API. gpt-5 reasoning models reject custom temperature
+  // and consume the output budget on internal reasoning unless effort is
+  // capped — set "minimal" so the visible answer fits in our token budget.
   const res = await getOpenAI().responses.create({
     model,
     instructions: args.system,
     input: args.user,
-    max_output_tokens: args.maxTokens ?? 1024,
-    temperature: args.temperature ?? 0.2,
+    max_output_tokens: Math.max(args.maxTokens ?? 1024, 1024),
+    reasoning: { effort: "low" },
   });
   const text = (res as { output_text?: string }).output_text ?? "";
   const usage = (res as { usage?: { input_tokens?: number; output_tokens?: number } }).usage ?? {};

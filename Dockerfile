@@ -34,6 +34,7 @@ COPY workspace/skills/score-relevance/package.json   workspace/skills/score-rele
 COPY workspace/skills/summarize-tldr/package.json    workspace/skills/summarize-tldr/tsconfig.json    ./workspace/skills/summarize-tldr/
 COPY workspace/skills/search-corpus/package.json     workspace/skills/search-corpus/tsconfig.json     ./workspace/skills/search-corpus/
 COPY workspace/skills/post-telegram/package.json     workspace/skills/post-telegram/tsconfig.json     ./workspace/skills/post-telegram/
+COPY workspace/skills/health-check/package.json      workspace/skills/health-check/tsconfig.json      ./workspace/skills/health-check/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     HTTP_PROXY="$HTTP_PROXY" HTTPS_PROXY="$HTTPS_PROXY" \
     pnpm install --registry="$NPM_REGISTRY" --no-frozen-lockfile --no-optional \
