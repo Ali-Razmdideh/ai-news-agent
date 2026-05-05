@@ -128,21 +128,11 @@ def run():
     sys.stdout.write(json.dumps({"ok": ok, "checks": checks, "errors": errors}) + "\n")
     sys.stdout.flush()
 
-    # Failure path: notify admin (best-effort).
-    if not ok and env and env.DRY_RUN != 1:
-        try:
-            from core import send_message, escape_md_v2
+    # Failure path: log summary (OpenClaw delivers notifications natively).
+    if not ok:
+        from core import log
 
-            lines = "\n".join(f"• {e}" for e in errors)
-            send_message(
-                chat_id=env.ADMIN_TG_USER_ID,
-                text=f"*health\\-check failed*\n{escape_md_v2(lines)}",
-                parse_mode="MarkdownV2",
-            )
-        except Exception as e:
-            from core import log
-
-            log.error({"err": str(e)}, "admin_dm_failed")
+        log.error({"errors": errors}, "health_check_failed")
 
     if not ok:
         sys.exit(1)

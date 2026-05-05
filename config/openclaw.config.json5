@@ -63,13 +63,18 @@
       }
     }
   ],
+  "cron": {
+    "store": "/home/app/.openclaw/cron/jobs.json"
+  },
   "gateway": {
+    "mode": "local",
+    "bind": "loopback",
     "auth": {
       "token": "${OPENCLAW_GATEWAY_TOKEN}"
     }
   },
   "meta": {
-    "lastTouchedVersion": "2026.5.3-1",
-    "lastTouchedAt": "2026-05-04T11:29:11.160Z"
+    "lastTouchedVersion": "2026.5.2",
+    "lastTouchedAt": "2026-05-05T16:00:00.000Z"
   }
 }

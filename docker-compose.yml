@@ -3,8 +3,10 @@ services:
     build:
       context: .
       args:
-        HTTP_PROXY: ${HTTP_PROXY:-}
-        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        HTTP_PROXY: http://host.docker.internal:11180
+        HTTPS_PROXY: http://host.docker.internal:11180
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
     image: ai-news:latest
     container_name: ai-news
     restart: unless-stopped
@@ -14,7 +16,7 @@ services:
     volumes:
       - ainews-data:/data
       - ainews-state:/home/app/.openclaw
-      - ./config:/app/config
+      - ./config:/app/config:ro
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -28,6 +30,7 @@ services:
       ADMIN_TG_USER_ID: ${ADMIN_TG_USER_ID:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
       AI_NEWS_DB: /data/news.db
       DAILY_TOKEN_BUDGET: ${DAILY_TOKEN_BUDGET:-2000000}
       MAX_POSTS_PER_HOUR: ${MAX_POSTS_PER_HOUR:-8}

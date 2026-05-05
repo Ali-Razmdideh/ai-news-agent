@@ -1,7 +1,7 @@
 import re
 
 _SPECIAL = re.compile(r"([_*\[\]()~`>#+\-=|{}.!\\])")
-_ZERO_WIDTH = re.compile(r"[​-‏‪-‮⁠﻿]")
+_ZERO_WIDTH = re.compile("[\u200b-\u200f\u202a-\u202e\u2060\ufeff]")
 _IMAGE_LINK = re.compile(r"!\[[^\]]*]\([^)]+\)")
 
 

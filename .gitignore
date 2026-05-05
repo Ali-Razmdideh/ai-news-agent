@@ -17,3 +17,9 @@ backups/
 config/cron/jobs-state.json
 __pycache__/
 *.pyc
+*.pyo
+wheels/
+openclaw-dist.tar.gz
+.mypy_cache/
+.claude/
+data/
