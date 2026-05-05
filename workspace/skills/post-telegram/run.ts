@@ -1,3 +1,21 @@
+/**
+ * Skill: post-telegram
+ *
+ * The single outbound surface for everything the bot says. Three modes:
+ *   • --kind item   --item-id N             → post a fully-prepared item
+ *                                             (must have score + summary)
+ *                                             to the broadcast channel.
+ *   • --kind reply  --chat-id C --reply-to M
+ *                   --text "<text>"         → reply in the discussion group.
+ *   • --kind admin  --text "<text>"         → DM the admin user.
+ *
+ * Output (JSON, one line on stdout):  { itemId?, msg_id }
+ *
+ * Defense-in-depth allowlist: even if openclaw.config drifts, this skill
+ * refuses any chat-id outside the configured channel, group, or admin.
+ * The skill itself is `disable-model-invocation: true` so a prompt-injected
+ * fetch can never trick the model into invoking it.
+ */
 import {
   openDb,
   sendMessage,
@@ -9,6 +27,10 @@ import {
   cliArg,
 } from "@ai-news/core";
 
+/**
+ * Hard allowlist on every send. The set is built from env each call so
+ * any test / dev rotation of channel ids takes effect without restart.
+ */
 function assertAllowedChat(chatId: string): void {
   const env = loadEnv();
   const allowed = new Set([env.TELEGRAM_CHANNEL_ID, env.TELEGRAM_DISCUSSION_GROUP_ID, env.ADMIN_TG_USER_ID]);
@@ -26,6 +48,13 @@ type ItemRow = {
   bullets_json: string;
 };
 
+/**
+ * Mode: post a curated item to the broadcast channel.
+ *
+ * The query is the idempotency contract — it returns no row if the item
+ * is already posted (LEFT JOIN posts) or missing a score/summary (INNER
+ * JOIN). So a re-run on the same item is a safe no-op.
+ */
 async function postItem(itemId: number) {
   const db = openDb();
   const row = db
@@ -42,8 +71,14 @@ async function postItem(itemId: number) {
     log.info({ itemId }, "post_skipped_already_posted_or_missing");
     return { itemId, msg_id: null };
   }
+
   const env = loadEnv();
+  // Belt-and-suspenders: the channel id is sourced from env, but we still
+  // funnel it through the allowlist — keeps the audit trail consistent
+  // and catches misconfigured envs at send-time, not silently in Telegram.
   assertAllowedChat(env.TELEGRAM_CHANNEL_ID);
+
+  // formatItemMessage handles the MarkdownV2 escaping + URL escaping.
   const text = formatItemMessage({
     title: row.title,
     source: row.source,
@@ -53,7 +88,12 @@ async function postItem(itemId: number) {
     bullets: JSON.parse(row.bullets_json) as string[],
     url: row.url,
   });
+
   const res = await sendMessage({ chatId: env.TELEGRAM_CHANNEL_ID, text, parseMode: "MarkdownV2" });
+
+  // Record the post so the dedup query above sees it next time. We only
+  // write on a real message_id — DRY_RUN responses don't have one, which
+  // means dry-run posts won't pollute the dedup state.
   if (res?.message_id) {
     db.prepare(
       `INSERT OR IGNORE INTO posts (item_id, telegram_msg_id, chat_id, kind) VALUES (?, ?, ?, 'item')`,
@@ -62,6 +102,11 @@ async function postItem(itemId: number) {
   return { itemId, msg_id: res?.message_id ?? null };
 }
 
+/**
+ * Mode: reply in the linked discussion group. Used by the `qa` agent.
+ * Free-form text → escapeMdV2 → cap at 3500 (Telegram's per-message
+ * limit is 4096; we leave headroom for parse failures).
+ */
 async function postReply(chatId: string, replyTo: number, text: string) {
   assertAllowedChat(chatId);
   const res = await sendMessage({
@@ -73,6 +118,10 @@ async function postReply(chatId: string, replyTo: number, text: string) {
   return { msg_id: res?.message_id ?? null };
 }
 
+/**
+ * Mode: admin DM. Used by health-check, the budget circuit-breaker, and
+ * for cost reports. Same length cap as reply.
+ */
 async function postAdmin(text: string) {
   const env = loadEnv();
   assertAllowedChat(env.ADMIN_TG_USER_ID);
@@ -85,6 +134,8 @@ async function postAdmin(text: string) {
 }
 
 runSkill("post-telegram", async () => {
+  // Mode dispatch via --kind. Default is "item" because that's the cron
+  // pipeline's hottest path.
   const kind = cliArg("kind") ?? "item";
   if (kind === "item") {
     const id = Number(cliArg("item-id"));

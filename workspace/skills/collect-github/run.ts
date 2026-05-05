@@ -1,3 +1,16 @@
+/**
+ * Skill: collect-github
+ *
+ * Walks a curated set of AI/ML repository topics on GitHub and pulls the
+ * top-starred new repos created in the last 7 days. One HTTPS call per
+ * topic; failures on individual topics are logged and skipped so a single
+ * 5xx doesn't drop the rest of the run.
+ *
+ * Output (JSON, one line on stdout):  { collected, fresh }
+ *
+ * Auth: optional `GITHUB_TOKEN` (read-only PAT). Without it we get hit by
+ * the unauthenticated rate limit (60 req/hr per IP) very quickly.
+ */
 import { safeFetchJson, loadEnv, log, insertItems, runSkill } from "@ai-news/core";
 
 type Repo = {
@@ -11,6 +24,9 @@ type Repo = {
   owner: { login: string };
 };
 
+// Hand-curated AI/ML topics. GitHub Search returns up to 1000 items per
+// query so we narrow by topic instead of one mega-query, both for diversity
+// and to keep individual responses small.
 const TOPICS = ["llm", "ai-agents", "machine-learning", "deep-learning", "rag", "transformer", "diffusion", "embeddings"];
 
 function dateNDaysAgo(n: number): string {
@@ -20,12 +36,17 @@ function dateNDaysAgo(n: number): string {
 runSkill("collect-github", async () => {
   const env = loadEnv();
   const since = dateNDaysAgo(7);
+
+  // Build headers once. Auth header included only when a token is set —
+  // missing token is allowed for local dev but warned about by health-check.
   const headers: Record<string, string> = {
     accept: "application/vnd.github+json",
     "user-agent": "ai-news-bot",
   };
   if (env.GITHUB_TOKEN) headers.authorization = `Bearer ${env.GITHUB_TOKEN}`;
 
+  // Sequential per-topic to stay under the secondary rate limit. Eight
+  // topics × 20 results × ~10 KB ≈ trivial; no need to parallelize.
   const collected: Repo[] = [];
   for (const topic of TOPICS) {
     const q = encodeURIComponent(`topic:${topic} created:>${since} stars:>50`);
@@ -34,10 +55,14 @@ runSkill("collect-github", async () => {
       const res = await safeFetchJson<{ items: Repo[] }>(url, { headers, timeoutMs: 15_000 });
       collected.push(...res.items);
     } catch (e) {
+      // One failed topic doesn't fail the whole run — keep going.
       log.warn({ topic, err: String(e) }, "github_topic_failed");
     }
   }
 
+  // Map to the shared schema. Title encodes star count for at-a-glance
+  // signal in the channel; the body concatenates description + topics so
+  // downstream scoring/summarization has something to ground in.
   return insertItems(
     collected.map((r) => ({
       source: "github",
