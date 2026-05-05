@@ -124,6 +124,15 @@ function hostAllowed(host: string, extra: ReadonlyArray<string>): boolean {
 
 const MAX_REDIRECTS = 3;
 
+function proxyConfigured(): boolean {
+  return Boolean(
+    process.env["HTTPS_PROXY"] ||
+      process.env["https_proxy"] ||
+      process.env["HTTP_PROXY"] ||
+      process.env["http_proxy"],
+  );
+}
+
 export class SsrfError extends Error {
   constructor(message: string) {
     super(message);
@@ -202,20 +211,26 @@ export async function safeFetch(url: string, opts: SafeFetchOptions = {}, depth 
   if (!hostAllowed(u.hostname, opts.allowExtra ?? [])) {
     throw new SsrfError(`host_not_allowlisted:${u.hostname}`);
   }
-  // Resolve and check IP
-  let resolvedIps: string[];
-  if (isIP(u.hostname)) {
-    resolvedIps = [u.hostname];
-  } else {
-    const records = await lookup(u.hostname, { all: true });
-    resolvedIps = records.map((r) => r.address);
-  }
-  for (const ip of resolvedIps) {
-    if (isIP(ip) === 4 && isPrivateV4(ip)) {
-      throw new SsrfError(`private_ipv4:${ip}`);
+  // When egressing through a proxy, DNS resolution happens at the proxy
+  // (CONNECT tunnel), so the local resolver's answer is meaningless — and
+  // censored networks (e.g. Iran's DPI) often poison public hostnames to
+  // RFC1918 sinkholes, which would falsely trip the private-IP guard.
+  // Host allowlist above is still enforced.
+  if (!proxyConfigured()) {
+    let resolvedIps: string[];
+    if (isIP(u.hostname)) {
+      resolvedIps = [u.hostname];
+    } else {
+      const records = await lookup(u.hostname, { all: true });
+      resolvedIps = records.map((r) => r.address);
     }
-    if (isIP(ip) === 6 && isPrivateV6(ip)) {
-      throw new SsrfError(`private_ipv6:${ip}`);
+    for (const ip of resolvedIps) {
+      if (isIP(ip) === 4 && isPrivateV4(ip)) {
+        throw new SsrfError(`private_ipv4:${ip}`);
+      }
+      if (isIP(ip) === 6 && isPrivateV6(ip)) {
+        throw new SsrfError(`private_ipv6:${ip}`);
+      }
     }
   }
 
