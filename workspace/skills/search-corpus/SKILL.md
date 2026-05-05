@@ -10,4 +10,4 @@ metadata:
       os: ["linux", "darwin"]
 ---
 
-Run `python3 {baseDir}/run.py --q "<question>" [--parent-item-id <n>] [--k 8]`. Returns `{matches: [{item_id, url, title, score, snippet}]}`.
+Run `python3 -m core.skills.search_corpus --q "<question>" [--parent-item-id <n>] [--k 8]`. Returns `{matches: [{item_id, url, title, score, snippet}]}`.

@@ -4,9 +4,9 @@ import re
 import json
 from datetime import datetime, timezone
 
-
 SECRET_PATTERNS = [
     (re.compile(r"sk-ant-[a-zA-Z0-9_-]{20,}"), "sk-ant-***"),
+    (re.compile(r"sk-proj-[A-Za-z0-9_-]{20,}"), "sk-proj-***"),
     (re.compile(r"\d{8,12}:[A-Za-z0-9_-]{30,}"), "tg-bot-***"),
     (re.compile(r"ghp_[A-Za-z0-9]{30,}"), "ghp_***"),
     (re.compile(r"pa-[A-Za-z0-9_-]{20,}"), "pa-***"),
@@ -41,11 +41,30 @@ class _JsonFormatter(logging.Formatter):
         }
         # Extra fields attached via log.info({...}, msg) style
         for k, v in record.__dict__.items():
-            if k not in ("name", "msg", "args", "levelname", "levelno", "pathname",
-                         "filename", "module", "exc_info", "exc_text", "stack_info",
-                         "lineno", "funcName", "created", "msecs", "relativeCreated",
-                         "thread", "threadName", "processName", "process", "taskName",
-                         "message"):
+            if k not in (
+                "name",
+                "msg",
+                "args",
+                "levelname",
+                "levelno",
+                "pathname",
+                "filename",
+                "module",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "lineno",
+                "funcName",
+                "created",
+                "msecs",
+                "relativeCreated",
+                "thread",
+                "threadName",
+                "processName",
+                "process",
+                "taskName",
+                "message",
+            ):
                 obj[k] = _redact(v)
         if record.exc_info:
             obj["exc"] = self.formatException(record.exc_info)
@@ -78,11 +97,20 @@ class _Logger:
         elif args:
             self._logger.log(level, args[0], *args[1:], **kwargs)
 
-    def debug(self, *args, **kwargs): self._emit(logging.DEBUG, args, kwargs)
-    def info(self, *args, **kwargs): self._emit(logging.INFO, args, kwargs)
-    def warn(self, *args, **kwargs): self._emit(logging.WARNING, args, kwargs)
-    def warning(self, *args, **kwargs): self._emit(logging.WARNING, args, kwargs)
-    def error(self, *args, **kwargs): self._emit(logging.ERROR, args, kwargs)
+    def debug(self, *args, **kwargs):
+        self._emit(logging.DEBUG, args, kwargs)
+
+    def info(self, *args, **kwargs):
+        self._emit(logging.INFO, args, kwargs)
+
+    def warn(self, *args, **kwargs):
+        self._emit(logging.WARNING, args, kwargs)
+
+    def warning(self, *args, **kwargs):
+        self._emit(logging.WARNING, args, kwargs)
+
+    def error(self, *args, **kwargs):
+        self._emit(logging.ERROR, args, kwargs)
 
 
 log = _Logger()

@@ -29,7 +29,9 @@ class AppEnv:
 def load_env() -> AppEnv:
     provider = os.environ.get("LLM_PROVIDER", "anthropic")
     if provider not in ("anthropic", "openai"):
-        raise ValueError(f"LLM_PROVIDER must be 'anthropic' or 'openai', got: {provider}")
+        raise ValueError(
+            f"LLM_PROVIDER must be 'anthropic' or 'openai', got: {provider}"
+        )
 
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
     openai_key = os.environ.get("OPENAI_API_KEY", "")

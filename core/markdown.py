@@ -10,7 +10,9 @@ def escape_md_v2(text: str) -> str:
 
 
 def untrusted(label: str, text: str) -> str:
-    safe = re.sub(r"</?untrusted_source[^>]*>", "[redacted-tag]", text, flags=re.IGNORECASE)
+    safe = re.sub(
+        r"</?untrusted_source[^>]*>", "[redacted-tag]", text, flags=re.IGNORECASE
+    )
     safe = safe[:32_000]
     return f'<untrusted_source name="{label}">\n{safe}\n</untrusted_source>'
 
@@ -18,6 +20,10 @@ def untrusted(label: str, text: str) -> str:
 def scrub_for_model(text: str) -> str:
     text = _ZERO_WIDTH.sub("", text)
     text = _IMAGE_LINK.sub("[image]", text)
+    # Defence-in-depth: strip injection tags before untrusted() wraps them.
+    text = re.sub(
+        r"</?untrusted_source[^>]*>", "[redacted-tag]", text, flags=re.IGNORECASE
+    )
     return text[:32_000]
 
 
@@ -39,18 +45,18 @@ def format_item_message(
     tpc = escape_md_v2(_clean(topic))
     sc = escape_md_v2(str(round(score)))
     tl = escape_md_v2(_clean(tldr))
-    bullet_lines = "\n".join(
-        f"• {escape_md_v2(_clean(b))}" for b in bullets[:3]
-    )
+    bullet_lines = "\n".join(f"• {escape_md_v2(_clean(b))}" for b in bullets[:3])
     # URL inside () must have ) and \ escaped
     safe_url = re.sub(r"[\\)]", lambda m: f"\\{m.group()}", url)
-    return "\n".join([
-        f"*{t}*",
-        f"_{src} · {tpc} · score {sc}/10_",
-        "",
-        tl,
-        "",
-        bullet_lines,
-        "",
-        f"🔗 [link]({safe_url})",
-    ])
+    return "\n".join(
+        [
+            f"*{t}*",
+            f"_{src} · {tpc} · score {sc}/10_",
+            "",
+            tl,
+            "",
+            bullet_lines,
+            "",
+            f"🔗 [link]({safe_url})",
+        ]
+    )

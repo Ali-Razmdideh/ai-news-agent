@@ -11,7 +11,7 @@ metadata:
       os: ["linux", "darwin"]
 ---
 
-Run `python3 {baseDir}/run.py`. Output is JSON `{ok, checks: {...}, errors: []}`.
+Run `python3 -m core.skills.health_check`. Output is JSON `{ok, checks: {...}, errors: []}`.
 
 Hard rules:
 - Never reads/loads `MEMORY.md` or `USER.md` (callable from any session).

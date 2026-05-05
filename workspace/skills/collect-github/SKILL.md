@@ -11,4 +11,4 @@ metadata:
       os: ["linux", "darwin"]
 ---
 
-Run `python3 {baseDir}/run.py`. Uses a read-only PAT (`public_repo` scope only). Output: `{collected, new}`.
+Run `python3 -m core.skills.collect_github`. Uses a read-only PAT (`public_repo` scope only). Output: `{collected, new}`.

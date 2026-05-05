@@ -15,5 +15,7 @@ Triggered by cron `ai-news-collect` (every 30 min) or `ai-news-digest` (08:00).
 7. Cluster-merge near-duplicates (cosine ≥ 0.92) — keep highest score.
 8. Burst control: at most `MAX_POSTS_PER_HOUR` posts; remainder roll into the
    08:00 digest.
-9. `post-telegram` per item to `TELEGRAM_CHANNEL_ID`. Insert into `posts`.
+9. For each item to post: emit a formatted MarkdownV2 message (title, source,
+   topic, score, TL;DR, bullets, URL). OpenClaw routes agent output to
+   `TELEGRAM_CHANNEL_ID` natively. Insert a row into `posts` (idempotency guard).
 10. Emit one-line stats: `{collected, scored, kept, posted, dropped, errors}`.

@@ -2,7 +2,6 @@ from __future__ import annotations
 import os
 from typing import Literal, NamedTuple, Optional
 from .env import load_env
-from .log import log
 
 Tier = Literal["low", "mid", "high"]
 
@@ -22,7 +21,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
 
 def model_for(tier: Tier) -> str:
     env = load_env()
-    override = {"low": env.MODEL_LOW, "mid": env.MODEL_MID, "high": env.MODEL_HIGH}.get(tier, "")
+    override = {"low": env.MODEL_LOW, "mid": env.MODEL_MID, "high": env.MODEL_HIGH}.get(
+        tier, ""
+    )
     if override:
         return override
     return DEFAULTS[env.LLM_PROVIDER][tier]
@@ -46,24 +47,32 @@ class CompleteResult(NamedTuple):
 
 
 def _get_proxy() -> Optional[str]:
-    return (os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or
-            os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy"))
+    return (
+        os.environ.get("HTTPS_PROXY")
+        or os.environ.get("https_proxy")
+        or os.environ.get("HTTP_PROXY")
+        or os.environ.get("http_proxy")
+    )
 
 
 def _anthropic_client():
     import anthropic
     import httpx
+
     proxy = _get_proxy()
     if proxy:
         transport = httpx.HTTPTransport(proxy=proxy)
         http_client = httpx.Client(transport=transport)
-        return anthropic.Anthropic(api_key=load_env().ANTHROPIC_API_KEY, http_client=http_client)
+        return anthropic.Anthropic(
+            api_key=load_env().ANTHROPIC_API_KEY, http_client=http_client
+        )
     return anthropic.Anthropic(api_key=load_env().ANTHROPIC_API_KEY)
 
 
 def _openai_client():
     import openai
     import httpx
+
     proxy = _get_proxy()
     if proxy:
         transport = httpx.HTTPTransport(proxy=proxy)
@@ -74,6 +83,7 @@ def _openai_client():
 
 def complete(args: CompleteArgs) -> CompleteResult:
     from .budget import is_over_budget, record_usage
+
     if is_over_budget():
         raise RuntimeError("daily_token_budget_exceeded")
 
@@ -87,15 +97,33 @@ def complete(args: CompleteArgs) -> CompleteResult:
             model=model,
             max_tokens=args.max_tokens,
             temperature=args.temperature,
-            system=[{"type": "text", "text": args.system, "cache_control": {"type": "ephemeral"}}],
+            system=[
+                {
+                    "type": "text",
+                    "text": args.system,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             messages=[{"role": "user", "content": args.user}],
         )
         text = "".join(b.text for b in resp.content if b.type == "text")
         usage = resp.usage
-        tokens_in = usage.input_tokens + getattr(usage, "cache_read_input_tokens", 0) + getattr(usage, "cache_creation_input_tokens", 0)
+        tokens_in = (
+            usage.input_tokens
+            + getattr(usage, "cache_read_input_tokens", 0)
+            + getattr(usage, "cache_creation_input_tokens", 0)
+        )
         tokens_out = usage.output_tokens
-        record_usage(model=model, stage=args.stage, tokens_in=tokens_in, tokens_out=tokens_out)
-        return CompleteResult(text=text, tokens_in=tokens_in, tokens_out=tokens_out, model=model, provider=provider)
+        record_usage(
+            model=model, stage=args.stage, tokens_in=tokens_in, tokens_out=tokens_out
+        )
+        return CompleteResult(
+            text=text,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            model=model,
+            provider=provider,
+        )
 
     # OpenAI — Responses API; gpt-5 reasoning models reject temperature
     client = _openai_client()
@@ -110,5 +138,13 @@ def complete(args: CompleteArgs) -> CompleteResult:
     usage = getattr(resp, "usage", None)
     tokens_in = getattr(usage, "input_tokens", 0) if usage else 0
     tokens_out = getattr(usage, "output_tokens", 0) if usage else 0
-    record_usage(model=model, stage=args.stage, tokens_in=tokens_in, tokens_out=tokens_out)
-    return CompleteResult(text=text, tokens_in=tokens_in, tokens_out=tokens_out, model=model, provider=provider)
+    record_usage(
+        model=model, stage=args.stage, tokens_in=tokens_in, tokens_out=tokens_out
+    )
+    return CompleteResult(
+        text=text,
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        model=model,
+        provider=provider,
+    )

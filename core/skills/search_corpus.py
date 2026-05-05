@@ -13,10 +13,6 @@ Output (JSON, one line on stdout):
 
 No LLM calls; no DB writes. Pure retrieval.
 """
-import sys
-import os
-
-sys.path.insert(0, os.environ.get("AI_NEWS_CORE", "/app"))
 
 import json
 from core import open_db, embed, cosine, log, run_skill, cli_arg
@@ -25,6 +21,7 @@ from core import open_db, embed, cosine, log, run_skill, cli_arg
 def sanitize_fts_query(q: str) -> str:
     """Strip FTS5 meta-chars, drop short tokens, OR-join up to 8 terms."""
     import re
+
     tokens = re.sub(r'["()*]', " ", q).split()
     tokens = [t for t in tokens if len(t) >= 2][:8]
     return " OR ".join(tokens)
@@ -102,4 +99,5 @@ def main():
     return {"matches": matches}
 
 
-run_skill("search-corpus", main)
+if __name__ == "__main__":
+    run_skill("search-corpus", main)

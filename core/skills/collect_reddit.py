@@ -9,10 +9,6 @@ Output (JSON, one line on stdout):  { collected, fresh }
 No auth — public listing endpoint. Custom user-agent required (Reddit
 blocks default UAs).
 """
-import sys
-import os
-
-sys.path.insert(0, os.environ.get("AI_NEWS_CORE", "/app"))
 
 from core import safe_fetch_json, log, insert_items, run_skill
 from core.db import CollectedItem
@@ -35,19 +31,26 @@ def main():
                 d = child["data"]
                 if d.get("ups", 0) < 50:
                     continue
-                link = d["url"] if d["url"].startswith("http") else f"https://www.reddit.com{d['permalink']}"
-                rows.append(CollectedItem(
-                    source=f"reddit:{sub}",
-                    source_id=d["id"],
-                    url=link,
-                    title=d["title"],
-                    raw_body=d.get("selftext", ""),
-                    authors=d.get("author"),
-                    published_at=to_iso(d["created_utc"]),
-                ))
+                link = (
+                    d["url"]
+                    if d["url"].startswith("http")
+                    else f"https://www.reddit.com{d['permalink']}"
+                )
+                rows.append(
+                    CollectedItem(
+                        source=f"reddit:{sub}",
+                        source_id=d["id"],
+                        url=link,
+                        title=d["title"],
+                        raw_body=d.get("selftext", ""),
+                        authors=d.get("author"),
+                        published_at=to_iso(d["created_utc"]),
+                    )
+                )
         except Exception as e:
             log.warn({"sub": sub, "err": str(e)}, "reddit_failed")
     return insert_items(rows)
 
 
-run_skill("collect-reddit", main)
+if __name__ == "__main__":
+    run_skill("collect-reddit", main)

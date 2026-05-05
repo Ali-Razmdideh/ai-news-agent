@@ -11,4 +11,4 @@ metadata:
       os: ["linux", "darwin"]
 ---
 
-Run `python3 {baseDir}/run.py --item-id <n>`. Refuses any URL whose host is not on the allowlist or that resolves to a private IP.
+Run `python3 -m core.skills.enrich_fetch --item-id <n>`. Refuses any URL whose host is not on the allowlist or that resolves to a private IP.

@@ -11,4 +11,4 @@ metadata:
       os: ["linux", "darwin"]
 ---
 
-Run `python3 {baseDir}/run.py --item-id <n>`. Persists to `summaries`.
+Run `python3 -m core.skills.summarize_tldr --item-id <n>`. Persists to `summaries`.

@@ -1,4 +1,5 @@
 import sys, os, unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.http import safe_fetch, SsrfError

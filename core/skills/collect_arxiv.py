@@ -10,10 +10,6 @@ Output (JSON, one line on stdout):  { collected, fresh }
 
 No LLM calls. No Telegram side-effects. Pure HTTP + SQLite.
 """
-import sys
-import os
-
-sys.path.insert(0, os.environ.get("AI_NEWS_CORE", "/app"))
 
 import re
 from core import safe_fetch_text, insert_items, run_skill, xml_match
@@ -36,10 +32,19 @@ def parse_atom(xml: str) -> list[dict]:
         title = re.sub(r"\s+", " ", xml_match(block, r"<title>([\s\S]*?)</title>"))
         summary = xml_match(block, r"<summary>([\s\S]*?)</summary>")
         published = xml_match(block, r"<published>([^<]+)</published>")
-        authors = ", ".join(m.group(1) for m in re.finditer(r"<name>([^<]+)</name>", block))
+        authors = ", ".join(
+            m.group(1) for m in re.finditer(r"<name>([^<]+)</name>", block)
+        )
         if entry_id and title:
-            out.append({"id": entry_id, "title": title, "summary": summary,
-                        "published": published, "authors": authors})
+            out.append(
+                {
+                    "id": entry_id,
+                    "title": title,
+                    "summary": summary,
+                    "published": published,
+                    "authors": authors,
+                }
+            )
     return out
 
 
@@ -50,16 +55,19 @@ def main():
     for e in entries:
         # Strip version suffix ("v2") so a revision doesn't appear as new.
         arxiv_id = e["id"].split("/abs/")[-1].split("v")[0] or e["id"]
-        rows.append(CollectedItem(
-            source="arxiv",
-            source_id=arxiv_id,
-            url=e["id"],
-            title=e["title"],
-            raw_body=e["summary"],
-            authors=e["authors"],
-            published_at=e["published"],
-        ))
+        rows.append(
+            CollectedItem(
+                source="arxiv",
+                source_id=arxiv_id,
+                url=e["id"],
+                title=e["title"],
+                raw_body=e["summary"],
+                authors=e["authors"],
+                published_at=e["published"],
+            )
+        )
     return insert_items(rows)
 
 
-run_skill("collect-arxiv", main)
+if __name__ == "__main__":
+    run_skill("collect-arxiv", main)

@@ -10,4 +10,4 @@ metadata:
       env: ["AI_NEWS_DB"]
       os: ["linux", "darwin"]
 ---
-Run `python3 {baseDir}/run.py`. Output: `{collected, new}`.
+Run `python3 -m core.skills.collect_reddit`. Output: `{collected, new}`.

@@ -7,6 +7,7 @@ def _utc_day() -> str:
 
 def record_usage(*, model: str, stage: str, tokens_in: int, tokens_out: int) -> None:
     from .db import open_db
+
     db = open_db()
     db.execute(
         """INSERT INTO usage (day, model, stage, tokens_in, tokens_out, calls)
@@ -22,22 +23,33 @@ def record_usage(*, model: str, stage: str, tokens_in: int, tokens_out: int) -> 
 
 def tokens_today() -> int:
     from .db import open_db
-    row = open_db().execute(
-        "SELECT COALESCE(SUM(tokens_in + tokens_out), 0) AS total FROM usage WHERE day = ?",
-        (_utc_day(),),
-    ).fetchone()
+
+    row = (
+        open_db()
+        .execute(
+            "SELECT COALESCE(SUM(tokens_in + tokens_out), 0) AS total FROM usage WHERE day = ?",
+            (_utc_day(),),
+        )
+        .fetchone()
+    )
     return row["total"] if row else 0
 
 
 def is_over_budget() -> bool:
     from .env import load_env
+
     return tokens_today() >= load_env().DAILY_TOKEN_BUDGET
 
 
 def today_breakdown() -> list[dict]:
     from .db import open_db
-    rows = open_db().execute(
-        "SELECT model, stage, tokens_in, tokens_out, calls FROM usage WHERE day = ? ORDER BY tokens_in DESC",
-        (_utc_day(),),
-    ).fetchall()
+
+    rows = (
+        open_db()
+        .execute(
+            "SELECT model, stage, tokens_in, tokens_out, calls FROM usage WHERE day = ? ORDER BY tokens_in DESC",
+            (_utc_day(),),
+        )
+        .fetchall()
+    )
     return [dict(r) for r in rows]

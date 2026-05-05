@@ -1,5 +1,5 @@
 # RSS feeds consumed by collect-rss.
-# Hosts must be on packages/core/http.ts allowlist (otherwise SSRF guard refuses).
+# Hosts must be on the allowlist in core/http.py (otherwise SSRF guard refuses).
 #
 # All sources commented out except TLDR-AI for the initial smoke run.
 # Re-enable as needed.

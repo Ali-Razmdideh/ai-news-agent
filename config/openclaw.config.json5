@@ -31,16 +31,14 @@
           "collect-reddit",
           "enrich-fetch",
           "score-relevance",
-          "summarize-tldr",
-          "post-telegram"
+          "summarize-tldr"
         ]
       },
       {
         "id": "qa",
         "workspace": "/app/workspace",
         "skills": [
-          "search-corpus",
-          "post-telegram"
+          "search-corpus"
         ]
       }
     ]

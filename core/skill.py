@@ -36,7 +36,11 @@ def to_iso(value) -> Optional[str]:
         return None
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(value, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+            return (
+                datetime.fromtimestamp(value, tz=timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
         except Exception:
             return None
     s = str(value).strip()
@@ -45,6 +49,7 @@ def to_iso(value) -> Optional[str]:
     # Try RFC 2822 (email format, used by RSS)
     try:
         from email.utils import parsedate_to_datetime
+
         dt = parsedate_to_datetime(s)
         return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     except Exception:

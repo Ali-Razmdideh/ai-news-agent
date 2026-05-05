@@ -10,17 +10,21 @@ Output (JSON, one line on stdout):  { collected, fresh }
 Auth: optional GITHUB_TOKEN (read-only PAT). Without it the unauthenticated
 rate limit (60 req/hr per IP) applies.
 """
-import sys
-import os
-
-sys.path.insert(0, os.environ.get("AI_NEWS_CORE", "/app"))
 
 from datetime import datetime, timezone, timedelta
 from core import safe_fetch_json, load_env, log, insert_items, run_skill
 from core.db import CollectedItem
 
-TOPICS = ["llm", "ai-agents", "machine-learning", "deep-learning", "rag",
-          "transformer", "diffusion", "embeddings"]
+TOPICS = [
+    "llm",
+    "ai-agents",
+    "machine-learning",
+    "deep-learning",
+    "rag",
+    "transformer",
+    "diffusion",
+    "embeddings",
+]
 
 
 def date_n_days_ago(n: int) -> str:
@@ -60,4 +64,5 @@ def main():
     return insert_items(rows)
 
 
-run_skill("collect-github", main)
+if __name__ == "__main__":
+    run_skill("collect-github", main)

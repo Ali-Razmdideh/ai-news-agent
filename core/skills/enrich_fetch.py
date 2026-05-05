@@ -12,10 +12,6 @@ Output (JSON, one line on stdout):
 Network egress is gated by the SSRF allowlist in core/http.py.
 No LLM calls; disable-model-invocation: true in SKILL.md.
 """
-import sys
-import os
-
-sys.path.insert(0, os.environ.get("AI_NEWS_CORE", "/app"))
 
 import re
 from core import open_db, safe_fetch_text, run_skill, cli_arg
@@ -26,7 +22,12 @@ def html_to_text(html: str) -> str:
     html = re.sub(r"<script[\s\S]*?</script>", " ", html, flags=re.IGNORECASE)
     html = re.sub(r"<style[\s\S]*?</style>", " ", html, flags=re.IGNORECASE)
     html = re.sub(r"<[^>]+>", " ", html)
-    html = html.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    html = (
+        html.replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+    )
     html = re.sub(r"&#(\d+);", lambda m: chr(int(m.group(1))), html)
     return re.sub(r"\s+", " ", html).strip()[:16_000]
 
@@ -56,4 +57,5 @@ def main():
     return {"id": item_id, "fetched": True, "bytes": len(text)}
 
 
-run_skill("enrich-fetch", main)
+if __name__ == "__main__":
+    run_skill("enrich-fetch", main)

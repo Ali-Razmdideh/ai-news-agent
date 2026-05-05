@@ -11,5 +11,5 @@ metadata:
       os: ["linux", "darwin"]
 ---
 
-Run `python3 {baseDir}/run.py`. Stdout JSON: `{collected, new}`.
+Run `python3 -m core.skills.collect_arxiv`. Stdout JSON: `{collected, new}`.
 Pure script — no LLM, no Telegram. Only writes to DB.

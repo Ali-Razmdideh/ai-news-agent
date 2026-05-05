@@ -10,12 +10,16 @@ Output (JSON, one line on stdout):  { id, score, topic, code_heavy }
 The pipeline drops items with score < 6, so this is the cheap gate that
 protects the more expensive summarize-tldr stage from junk.
 """
-import sys
-import os
 
-sys.path.insert(0, os.environ.get("AI_NEWS_CORE", "/app"))
-
-from core import open_db, complete, untrusted, scrub_for_model, run_skill, cli_arg, parse_json_block
+from core import (
+    open_db,
+    complete,
+    untrusted,
+    scrub_for_model,
+    run_skill,
+    cli_arg,
+    parse_json_block,
+)
 from core.llm import CompleteArgs
 
 SYSTEM = """You score AI-news items for a curated technical channel.
@@ -50,23 +54,30 @@ def main():
 
     # 4 KB cap of body is enough for scoring; summarization will pull more.
     body = scrub_for_model(row["raw_body"] or "")[:4000]
-    user_msg = "\n".join([
-        f"source: {row['source']}",
-        f"url: {row['url']}",
-        f"title: {row['title']}",
-        untrusted("body", body),
-        "Output JSON only.",
-    ])
+    # title and url come from scraped external sources — scrub before injecting.
+    safe_title = scrub_for_model(row["title"] or "")
+    safe_url = scrub_for_model(row["url"] or "")
+    user_msg = "\n".join(
+        [
+            f"source: {row['source']}",
+            f"url: {safe_url}",
+            f"title: {safe_title}",
+            untrusted("body", body),
+            "Output JSON only.",
+        ]
+    )
 
     # Low tier: cheap, fast, deterministic. temperature=0 → same score on retry.
-    result = complete(CompleteArgs(
-        tier="low",
-        system=SYSTEM,
-        user=user_msg,
-        stage="score-relevance",
-        max_tokens=200,
-        temperature=0.0,
-    ))
+    result = complete(
+        CompleteArgs(
+            tier="low",
+            system=SYSTEM,
+            user=user_msg,
+            stage="score-relevance",
+            max_tokens=200,
+            temperature=0.0,
+        )
+    )
 
     parsed = parse_json_block(result.text)
 
@@ -85,4 +96,5 @@ def main():
     return {"id": item_id, "score": score, "topic": topic, "code_heavy": code_heavy}
 
 
-run_skill("score-relevance", main)
+if __name__ == "__main__":
+    run_skill("score-relevance", main)

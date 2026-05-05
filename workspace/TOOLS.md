@@ -1,13 +1,14 @@
 # TOOLS — local environment notes
 
 ## Runtime
-- Node 22+, pnpm 9, TypeScript 5.6 strict.
-- SQLite via `better-sqlite3` + `sqlite-vec` extension.
+- Python 3.12, pip-managed dependencies (`requirements.txt`).
+- SQLite via stdlib `sqlite3` + `sqlite-vec` extension.
 - Embeddings via Voyage AI (`voyage-3-lite`).
+- HTTP via `httpx` (SSRF-guarded, timeouts, retries in `core/http.py`).
 
 ## Filesystem (sandboxed)
 - DB: `/data/news.db` (Docker volume).
-- Logs: stdout (JSON, pino).
+- Logs: stdout (JSON, structured via `core/log.py`).
 - FS writes outside `/data` and `/tmp` MUST fail (container is read-only root).
 
 ## Env vars (names only — values are loaded from `.env` / Docker secrets)
@@ -17,10 +18,12 @@
   `MAX_POSTS_PER_HOUR`, `QA_PER_USER_PER_HOUR`, `TIMEZONE`, `DRY_RUN`.
 
 ## Skill conventions
-- Every skill is `workspace/skills/<name>/{SKILL.md, run.ts}`.
+- Every skill is `workspace/skills/<name>/SKILL.md`.
+- Skill logic lives in `core/skills/<module>.py`; invoked with
+  `python3 -m core.skills.<module>` (requires `PYTHONPATH=/app`).
 - Skills MUST exit non-zero on error; stdout is JSON.
-- Skills MUST NOT print secrets; `packages/core/log.ts` handles redaction.
+- Skills MUST NOT print secrets; `core/log.py` handles redaction.
 
 ## Network egress
-- Allowlisted hosts only — see `packages/core/http.ts`.
-- All `fetch()` calls go through `safeFetch()` (SSRF-guarded, timeouts, retries).
+- Allowlisted hosts only — see `core/http.py`.
+- All requests go through `safe_fetch_text`/`safe_fetch_json` (SSRF-guarded).

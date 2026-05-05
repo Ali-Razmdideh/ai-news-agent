@@ -115,12 +115,10 @@ CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(
 
 
 def _migrate(db: sqlite3.Connection) -> None:
-    db.execute(
-        """CREATE TABLE IF NOT EXISTS _migrations (
+    db.execute("""CREATE TABLE IF NOT EXISTS _migrations (
              id INTEGER PRIMARY KEY,
              applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-           )"""
-    )
+           )""")
     db.commit()
 
     applied = {row[0] for row in db.execute("SELECT id FROM _migrations")}
@@ -148,6 +146,7 @@ def _migrate(db: sqlite3.Connection) -> None:
 
 def _backfill_iso_dates(db: sqlite3.Connection) -> None:
     from datetime import datetime, timezone
+
     rows = db.execute(
         "SELECT id, published_at FROM items WHERE published_at IS NOT NULL"
     ).fetchall()
@@ -157,6 +156,7 @@ def _backfill_iso_dates(db: sqlite3.Connection) -> None:
             for fmt in (None,):  # use dateutil-style parsing via datetime
                 try:
                     from email.utils import parsedate_to_datetime
+
                     dt = parsedate_to_datetime(pub)
                 except Exception:
                     try:
@@ -165,7 +165,9 @@ def _backfill_iso_dates(db: sqlite3.Connection) -> None:
                         continue
                 iso = dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
                 if iso != pub:
-                    db.execute("UPDATE items SET published_at = ? WHERE id = ?", (iso, row_id))
+                    db.execute(
+                        "UPDATE items SET published_at = ? WHERE id = ?", (iso, row_id)
+                    )
         except Exception:
             continue
     db.commit()
@@ -177,10 +179,13 @@ def open_db() -> sqlite3.Connection:
         return _cached_db
 
     from .env import load_env
+
     db_path = load_env().AI_NEWS_DB
 
-    # Ensure parent directory exists
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    # Ensure parent directory exists (skip for :memory:)
+    parent = os.path.dirname(db_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
 
     db = sqlite3.connect(db_path, check_same_thread=False)
     db.row_factory = sqlite3.Row
@@ -216,6 +221,7 @@ class CollectedItem:
 
 def insert_items(rows: list[CollectedItem]) -> dict:
     from .skill import to_iso
+
     db = open_db()
     fresh = 0
     try:
@@ -224,8 +230,15 @@ def insert_items(rows: list[CollectedItem]) -> dict:
                 """INSERT OR IGNORE INTO items
                    (source, source_id, url, title, raw_body, authors, published_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (r.source, r.source_id, r.url, r.title,
-                 r.raw_body, r.authors, to_iso(r.published_at)),
+                (
+                    r.source,
+                    r.source_id,
+                    r.url,
+                    r.title,
+                    r.raw_body,
+                    r.authors,
+                    to_iso(r.published_at),
+                ),
             )
             if cur.rowcount > 0:
                 fresh += 1

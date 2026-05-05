@@ -11,4 +11,4 @@ metadata:
       os: ["linux", "darwin"]
 ---
 
-Run `python3 {baseDir}/run.py`. Output: `{collected, new, errors}`.
+Run `python3 -m core.skills.collect_rss`. Output: `{collected, new, errors}`.

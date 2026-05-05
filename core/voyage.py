@@ -15,7 +15,12 @@ def embed(texts: list[str]) -> list[list[float]]:
         "https://api.voyageai.com/v1/embeddings",
         method="POST",
         headers={"authorization": f"Bearer {env.VOYAGE_API_KEY}"},
-        json_body={"model": _MODEL, "input": texts, "output_dimension": 256, "output_dtype": "float"},
+        json_body={
+            "model": _MODEL,
+            "input": texts,
+            "output_dimension": 256,
+            "output_dtype": "float",
+        },
         timeout_ms=20_000,
     )
     return [d["embedding"] for d in res["data"]]
