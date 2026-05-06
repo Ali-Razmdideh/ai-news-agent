@@ -46,7 +46,7 @@ Every 30 minutes:
 4. **Summarize** — `summarize-tldr` produces a 2–4 sentence TL;DR + 3 bullets
    + "why it matters". Default model is Haiku; the skill self-retries with
    Sonnet on low confidence, and uses Opus for code-heavy items.
-5. **Post** — `post-telegram` pushes a MarkdownV2-formatted message to the
+5. **Post** — the pipeline agent sends a MarkdownV2-formatted message to the
    broadcast channel and records `posts.telegram_msg_id` for idempotency.
 
 Daily at 08:00 (Asia/Tehran), `ai-news-digest` builds a top-10 roll-up.
@@ -79,8 +79,7 @@ When a user replies to a posted item in the linked discussion group **and
    │  qa          │  ───────uses─────────► │ score-relevance        │
    │ (low; read-  │                        │ summarize-tldr         │
    │  only)       │                        │ search-corpus  (RAG)   │
-   └──────────────┘                        │ post-telegram (priv)   │
-                                           │ health-check  (priv)   │
+   └──────────────┘                        │ health-check  (priv)   │
                                            └────────────────────────┘
 
                 Storage: SQLite + FTS5 at /data/news.db
@@ -98,12 +97,10 @@ skill.
 ```
 ai-news/
 ├── docker-compose.yml
-├── Dockerfile                  # multi-stage, node:22-slim, non-root, read-only FS
-├── pnpm-workspace.yaml
-├── package.json
-├── tsconfig.base.json
-├── tsconfig.json               # project-references root (typecheck whole repo)
-├── vitest.config.ts
+├── Dockerfile                  # multi-stage, python:3.12-slim, non-root, read-only FS
+├── docker-compose.yml
+├── pyproject.toml
+├── requirements.txt
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -122,7 +119,7 @@ ai-news/
 │   │   ├── answer-question.md
 │   │   └── rotate-credentials.md
 │   └── skills/
-│       ├── collect-arxiv/      ── SKILL.md, run.ts, package.json, tsconfig.json
+│       ├── collect-arxiv/      ── SKILL.md
 │       ├── collect-github/
 │       ├── collect-rss/
 │       ├── collect-hn/
@@ -131,22 +128,19 @@ ai-news/
 │       ├── score-relevance/
 │       ├── summarize-tldr/
 │       ├── search-corpus/
-│       ├── post-telegram/
 │       └── health-check/
 │
-├── packages/core/              # shared TypeScript library (workspace dep)
-│   └── src/
-│       ├── env.ts              # zod-validated env loader
-│       ├── log.ts              # pino structured logger
-│       ├── db.ts               # SQLite open + idempotent migrations
-│       ├── http.ts             # SSRF-guarded fetch with host allowlist
-│       ├── markdown.ts         # MarkdownV2 escape + injection scrub
-│       ├── access.ts           # 2nd-layer chat/user allowlist guard
-│       ├── telegram.ts         # thin Telegram Bot API wrapper
-│       ├── anthropic.ts        # Anthropic SDK helper (caching, retries)
-│       ├── llm.ts              # provider-neutral tier → model resolver
-│       ├── voyage.ts           # embeddings client (cosine similarity)
-│       └── budget.ts           # daily usage tracking + circuit-breaker
+├── core/                       # shared Python library
+│   ├── db.py                   # SQLite open + idempotent migrations
+│   ├── env.py                  # validated env loader
+│   ├── http_guard.py           # SSRF-guarded fetch with host allowlist
+│   ├── llm.py                  # Anthropic SDK helper (caching, retries)
+│   ├── markdown.py             # MarkdownV2 escape + injection scrub
+│   ├── access.py               # 2nd-layer chat/user allowlist guard
+│   ├── telegram.py             # thin Telegram Bot API wrapper
+│   ├── llm.py                  # provider-neutral tier → model resolver
+│   ├── voyage.py               # embeddings client (cosine similarity)
+│   └── budget.py               # daily usage tracking + circuit-breaker
 │
 ├── config/
 │   ├── openclaw.config.json5   # gateway, agents, bindings, channels
@@ -154,10 +148,10 @@ ai-news/
 │   └── feeds.yaml              # RSS source list (consumed by collect-rss)
 │
 ├── tests/
-│   ├── access.test.ts          # allowlist guard (red-team scenarios)
-│   ├── http.ssrf.test.ts       # private-IP refusal + host allowlist
-│   ├── markdown.test.ts        # MarkdownV2 escape correctness
-│   └── llm.modelFor.test.ts    # tier → model resolution
+│   ├── test_access.py          # allowlist guard (red-team scenarios)
+│   ├── test_http_guard.py      # private-IP refusal + host allowlist
+│   ├── test_markdown.py        # MarkdownV2 escape correctness
+│   └── test_llm.py             # tier → model resolution
 │
 └── data/                       # mounted volume → /data/news.db (gitignored)
 ```
@@ -189,38 +183,30 @@ rules out of shared contexts.
 
 ## Skills
 
-Every skill is a directory with `SKILL.md` (YAML frontmatter + instructions),
-`run.ts` (the executable), `package.json`, and `tsconfig.json` referencing
-`packages/core`. Frontmatter follows [OpenClaw conventions](https://docs.openclaw.ai/tools/skills.md):
+Every skill is a directory under `workspace/skills/` containing a single
+`SKILL.md` (YAML frontmatter + instructions). Frontmatter follows
+[OpenClaw conventions](https://docs.openclaw.ai/tools/skills.md):
 
 ```yaml
 ---
 name: collect-arxiv
 description: Fetch new cs.AI/cs.LG/cs.CL/cs.CV papers (last 24h) and write to the items DB.
-user-invocable: false                # not a slash command
 disable-model-invocation: true       # not callable from chat
-metadata:
-  openclaw:
-    requires:
-      bins: ["node"]
-      env:  ["AI_NEWS_DB"]
-      os:   ["linux", "darwin"]
 ---
 ```
 
-| Skill              | What it does                                                                  | LLM tier      | Invocable |
-|--------------------|-------------------------------------------------------------------------------|---------------|-----------|
-| `collect-arxiv`    | arXiv Atom API, last 24h, dedupe by `arxiv_id`, insert.                       | —             | priv      |
-| `collect-github`   | GitHub `/search/repositories` for recent AI/ML repos with stars threshold.    | —             | priv      |
-| `collect-rss`      | feedparser over `config/feeds.yaml` — labs, platforms, researcher blogs.      | —             | priv      |
-| `collect-hn`       | Algolia HN `search_by_date` with AI keywords + points threshold.              | —             | priv      |
-| `collect-reddit`   | r/MachineLearning + r/LocalLLaMA top-of-day public JSON.                      | —             | priv      |
-| `enrich-fetch`     | SSRF-guarded fetch of paper abstract / repo README / blog body.               | —             | priv      |
-| `score-relevance`  | 0–10 score, topic tag, `code_heavy` flag.                                     | low           | model     |
-| `summarize-tldr`   | TL;DR + 3 bullets + "why it matters". Self-escalates tier on low confidence.  | low → mid → high | model |
-| `search-corpus`    | FTS5 + embedding similarity retrieval; scoped top-k.                          | —             | model     |
-| `post-telegram`    | MarkdownV2 send to channel / discussion-group reply / admin DM.               | —             | priv      |
-| `health-check`     | Verifies env, DB, allowlist config, budget, Telegram reachability.            | —             | priv      |
+| Skill              | What it does                                                                  | LLM tier         | Invocable |
+|--------------------|-------------------------------------------------------------------------------|------------------|-----------|
+| `collect-arxiv`    | arXiv Atom API, last 24h, dedupe by `arxiv_id`, insert.                       | —                | priv      |
+| `collect-github`   | GitHub `/search/repositories` for recent AI/ML repos with stars threshold.    | —                | priv      |
+| `collect-rss`      | feedparser over `config/feeds.yaml` — labs, platforms, researcher blogs.      | —                | priv      |
+| `collect-hn`       | Algolia HN `search_by_date` with AI keywords + points threshold.              | —                | priv      |
+| `collect-reddit`   | r/MachineLearning + r/LocalLLaMA top-of-day public JSON.                      | —                | priv      |
+| `enrich-fetch`     | SSRF-guarded fetch of paper abstract / repo README / blog body.               | —                | priv      |
+| `score-relevance`  | 0–10 score, topic tag, `code_heavy` flag.                                     | low              | model     |
+| `summarize-tldr`   | TL;DR + 3 bullets + "why it matters". Self-escalates tier on low confidence.  | low → mid → high | model     |
+| `search-corpus`    | Hybrid FTS5 + sqlite-vec retrieval; scoped top-k for QA grounding.            | —                | model     |
+| `health-check`     | Verifies env, DB schema, allowlist config, budget, Telegram reachability.     | —                | priv      |
 
 ---
 
@@ -314,7 +300,7 @@ Properties:
 - **`requireMention: true`** — bot ignores discussion-group chatter unless
   explicitly @-mentioned by an allowlisted user.
 - **Broadcast channel post-only** — bot writes; never reads/replies there.
-- **Defense-in-depth** — `packages/core/access.ts` re-validates every inbound
+- **Defense-in-depth** — `core/access.py` re-validates every inbound
   update against the same env-driven allowlist *before* any agent code runs.
   If `openclaw.config.json5` ever drifts, this stops the leak.
 
@@ -341,16 +327,16 @@ _<source> · <topic tag> · score X/10_
 |-----------------------------|-------------------------------------------------------------------------------------------------------------------------------|
 | **OpenClaw built-ins**      | strict allowlist `dmPolicy`/`groupPolicy`, `requireMention`, `postOnly`, commands locked to admin, channel session sandboxing |
 | **Workspace privacy**       | `MEMORY.md`/`USER.md` not loaded for `qa` or any group/channel session                                                        |
-| **2nd-layer access guard**  | `packages/core/access.ts` re-checks `chat_id`/`user_id` before agent code runs; rejections counted in `access_denies`         |
-| **Skills least-privilege**  | `qa` agent only sees `search-corpus` + `post-telegram`. Per-skill allowlist in `agents.list`.                                 |
+| **2nd-layer access guard**  | `core/access.py` re-checks `chat_id`/`user_id` before agent code runs; rejections counted in `access_denies`         |
+| **Skills least-privilege**  | `qa` agent only sees `search-corpus`. Per-skill allowlist in `agents.list`.                                                   |
 | **Secrets**                 | `.env` not committed; reference via `${VAR}` in `openclaw.config.json5`. Never logged.                                        |
 | **SSRF guard**              | Refuses `10/8`, `127/8`, `169.254/16`, `172.16/12`, `192.168/16`, `::1`, link-local. Per-domain allowlist (arxiv.org, github.com, raw.githubusercontent.com, huggingface.co, etc.) |
 | **Prompt-injection**        | Fetched bodies wrapped in `<untrusted_source>…</untrusted_source>`; system prompts refuse instructions inside that block. Suspicious markdown links stripped. |
 | **Rate / cost**             | `DAILY_TOKEN_BUDGET` enforced via `usage` table + `isOverBudget()` gate; per-source max items per tick; per-user QA limit (10/h). |
-| **Container**               | multi-stage Dockerfile, `node:22-slim`, non-root `app` user, **read-only root FS**, only `/data` and `/tmp` writable, `--cap-drop=ALL`, `--security-opt=no-new-privileges`. |
+| **Container**               | multi-stage Dockerfile, `python:3.12-slim`, non-root `app` user, **read-only root FS**, only `/data` and `/tmp` writable, `--cap-drop=ALL`, `--security-opt=no-new-privileges`. |
 | **Network**                 | Compose network isolated; **no published ports**. OpenClaw control UI bound to `127.0.0.1`, reached via `docker exec` or SSH tunnel only. |
-| **Logging**                 | JSON logs (pino). Bot tokens / API keys redacted; Telegram usernames not logged (only IDs).                                    |
-| **Updates**                 | `pnpm audit` and `trivy image` recommended in CI. Lockfiles committed.                                                         |
+| **Logging**                 | JSON logs (structlog). Bot tokens / API keys redacted; Telegram usernames not logged (only IDs).                               |
+| **Updates**                 | `pip-audit` and `trivy image` recommended in CI. `requirements.txt` committed.                                                 |
 
 ---
 
@@ -379,7 +365,7 @@ docker compose logs -f
 ```
 
 First boot:
-1. Validates env (`packages/core/env.ts`, zod).
+1. Validates env (`core/env.py`).
 2. Opens DB and runs migrations.
 3. Runs `health-check`.
 4. DMs the admin a `🐧 booted` confirmation.
@@ -459,9 +445,8 @@ it off-VPS.
 ## Verification & testing
 
 ```sh
-pnpm install          # (or npm install)
-pnpm typecheck
-pnpm test             # vitest: SSRF, access, markdown, model resolver
+pip install -r requirements.txt
+python -m pytest tests/
 ```
 
 Targeted security tests included:
@@ -493,14 +478,14 @@ End-to-end smoke (requires real `.env`):
 ## Tuning sources
 
 - **`config/feeds.yaml`** — RSS sources for `collect-rss`. Hosts must already
-  be on the SSRF allowlist in `packages/core/http.ts`.
-- **`workspace/skills/collect-arxiv/run.ts`** — arXiv categories
+  be on the SSRF allowlist in `core/http_guard.py`.
+- **`workspace/skills/collect-arxiv/SKILL.md`** — arXiv categories
   (`cs.AI`, `cs.LG`, `cs.CL`, `cs.CV`).
-- **`workspace/skills/collect-github/run.ts`** — query string and stars
+- **`workspace/skills/collect-github/SKILL.md`** — query string and stars
   threshold.
-- **`workspace/skills/collect-hn/run.ts`** — points threshold.
-- **`workspace/skills/score-relevance/run.ts`** — scoring rubric prompt.
-- **`workspace/skills/summarize-tldr/run.ts`** — confidence threshold for the
+- **`workspace/skills/collect-hn/SKILL.md`** — points threshold.
+- **`workspace/skills/score-relevance/SKILL.md`** — scoring rubric prompt.
+- **`workspace/skills/summarize-tldr/SKILL.md`** — confidence threshold for the
   Sonnet retry, and the Opus trigger condition.
 
 ---
@@ -514,7 +499,7 @@ End-to-end smoke (requires real `.env`):
 | Bot ignores group messages                         | Expected when `requireMention: true` and the message had no @mention. |
 | `qa` agent answers "no source on file"             | The cited item isn't indexed yet — wait for next cron tick.          |
 | `dmPolicy != allowlist` on boot                    | Someone edited `openclaw.config.json5`; revert and restart.          |
-| `enrich-fetch` errors with `host_not_allowed`      | Add the host to `packages/core/http.ts` `HOST_ALLOWLIST` if trusted. |
+| `enrich-fetch` errors with `host_not_allowed`      | Add the host to `core/http_guard.py` `HOST_ALLOWLIST` if trusted. |
 
 ---
 
